@@ -14,5 +14,42 @@ In your project root:
 Then simply:
 - `import bigExport from 'firestore-to-bigquery-export'` OR `const bigExport = require('firestore-to-bigquery-export`
 
+## Usage
+First, you need to set up a BigQuery dataset with the appropriate tables and table schemas:
+```
+  bigExport.initializeBigQuery('firestore', [
+    'payments',
+    'profiles',
+    'ratings',
+    'users'
+  ])
+    .then(res => {
+      console.log(res)
+      response.status(200).send(res)
+    })
+    .catch(error => {
+      console.error(error)
+      response.status(500).send(error)
+    })
+```
+
+Then, you can transport your data.
+```
+  bigExport.transportDataToBigQuery('firestore', [
+    'payments',
+    'profiles',
+    'ratings',
+    'users'
+  ])
+    .then(res => {
+      console.log(res)
+      response.status(200).send(res)
+    })
+    .catch(error => {
+      console.error(error)
+      response.status(500).send(error)
+    })
+```
+
 ## Issues
 Please use the [issue tracker](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues).
