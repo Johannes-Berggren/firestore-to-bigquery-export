@@ -1,0 +1,24 @@
+{
+  "name": "firestore-to-bigquery-export",
+  "version": "0.0.1",
+  "description": "An automatic tool for copying and converting Firestore data to BigQuery.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Johannes-Berggren/firestore-to-bigquery-export.git"
+  },
+  "keywords": [
+    "Firestore",
+    "BigQuery",
+    "Export"
+  ],
+  "author": "Johannes Berggren <johannes@berggren.co> (https://johannesberggren.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues"
+  },
+  "homepage": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export#readme"
+}
