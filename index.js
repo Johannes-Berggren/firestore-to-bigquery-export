@@ -1,17 +1,66 @@
-exports.initializeBigQuery = (datasetName, collectionNames) => {
-  /**
-   * Creating a datasetName-dataset if it doesn't already exist.
-   * Running through each collection and checking if a table with the same name exists in the dataset.
-   * Creating the tables with the correct schema if the table doesn't already exist.
-   */
+/*!
+ * firestore-to-bigquery-export
+ *
+ * Copyright © 2019 Johannes Berggren
+ * MIT Licensed
+ *
+ */
 
+'use strict'
+
+/**
+ * Module dependencies.
+ *
+ * @private
+ */
+let { BigQuery } = require('@google-cloud/bigquery'),
+    bigQuery     = {},
+    firebase     = require('firebase-admin'),
+    firestore    = {}
+
+/**
+ * Connecting to the given Firebase project.
+ *
+ * @param {JSON} serviceAccountFile
+ * @public
+ */
+exports.setFirebaseConfig = serviceAccountFile => {
+  firebase.initializeApp({
+    credential: firebase.credential.cert(serviceAccountFile)
+  })
+  firestore = firebase.firestore()
+}
+
+/**
+ * Connecting to the given BigQuery project.
+ *
+ * @param {JSON} serviceAccountFile
+ * @public
+ */
+exports.setBigQueryConfig = serviceAccountFile => {
+  bigQuery = new BigQuery({
+    projectId: serviceAccountFile.project_id,
+    credentials: serviceAccountFile
+  })
+}
+
+/**
+ * Creating a BigQuery dataset with the given name if it doesn't already exist.
+ * Running through each collection and checking if a table with the same name exists in the dataset.
+ * Creating the tables with the correct schema if the table doesn't already exist.
+ *
+ * @param {String} datasetID
+ * @param {Array} collectionNames
+ * @returns {Promise<Number>}
+ * @public
+ */
+exports.initializeBigQuery = (datasetID, collectionNames) => {
   return new Promise((resolve, reject) => {
     let counter = 0
-    const { BigQuery }    = require('@google-cloud/bigquery'),
-          bigQuery        = new BigQuery(),
-          dataset         = bigQuery.dataset(datasetName),
-          existingTables  = [],
-          promises        = []
+
+    const dataset        = bigQuery.dataset(datasetID),
+          existingTables = [],
+          promises       = []
 
     dataset.exists()
       .then(res => {
@@ -37,7 +86,7 @@ exports.initializeBigQuery = (datasetName, collectionNames) => {
             })
         }
         else {
-          bigQuery.createDataset(datasetName)
+          bigQuery.createDataset(datasetID)
             .then(() => {
               collectionNames.forEach(collectionName => {
                 promises.push(createTable(collectionName))
@@ -53,7 +102,7 @@ exports.initializeBigQuery = (datasetName, collectionNames) => {
           Promise.all(promises)
             .then(() => {
               console.log('Created ' + counter + ' tables in BigQuery.')
-              resolve({ tablesCreated: counter })
+              resolve(counter)
             })
             .catch(error => {
               reject(error)
@@ -164,22 +213,20 @@ exports.initializeBigQuery = (datasetName, collectionNames) => {
   }
 }
 
-exports.transportDataToBigQuery = (datasetName, collectionNames) => {
-  /**
-   * Iterate through the listed collections. Convert each document to a format suitable for BigQuery,
-   * and insert them into a table corresponding to the collection name.
-   */
-
-  /**
-   * This has to be run locally on your computer (firebase serve --only functions).
-   */
-
+/**
+ * Iterate through the listed collections. Convert each document to a format suitable for BigQuery,
+ * and insert them into a table corresponding to the collection name.
+ *
+ * @param {String} datasetID
+ * @param {Array} collectionNames
+ * @returns {Promise<Number>}
+ * @public
+ */
+exports.transportDataToBigQuery = (datasetID, collectionNames) => {
   return new Promise((resolve, reject) => {
     let counter = 0
-    const { BigQuery }    = require('@google-cloud/bigquery'),
-          bigQuery        = new BigQuery(),
-          dataset         = bigQuery.dataset(datasetName),
-          promises        = []
+    const dataset  = bigQuery.dataset(datasetID),
+          promises = []
 
     collectionNames.forEach(n => {
       promises.push(
@@ -207,7 +254,7 @@ exports.transportDataToBigQuery = (datasetName, collectionNames) => {
       Promise.all(promises)
         .then(() => {
           console.log('Copied ' + counter + ' documents to BigQuery.')
-          resolve({ documentsCopied: counter })
+          resolve(counter)
         })
         .catch(error => {
           console.error(error)
@@ -226,7 +273,8 @@ exports.transportDataToBigQuery = (datasetName, collectionNames) => {
             if (formattedProp !== undefined) row[formatName(propName)] = formattedProp
           })
 
-          dataset.table(collectionName).insert(row, { writeDisposition: 'WRITE_TRUNCATE' })
+          // TODO: Add support for overwriting / patching existing table data { writeDisposition: 'WRITE_TRUNCATE' }
+          dataset.table(collectionName).insert(row)
             .then(res => {
               counter++
               resolve(res)
