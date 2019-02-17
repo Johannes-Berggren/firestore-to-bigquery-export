@@ -20,5 +20,9 @@
   "bugs": {
     "url": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues"
   },
-  "homepage": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export#readme"
+  "homepage": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export#readme",
+  "dependencies": {
+    "@google-cloud/bigquery": "2.0.6",
+    "firebase": "5.8.3"
+  }
 }
