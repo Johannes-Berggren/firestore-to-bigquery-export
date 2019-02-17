@@ -53,7 +53,7 @@ exports.initializeBigQuery = (datasetName, collectionNames) => {
           Promise.all(promises)
             .then(() => {
               console.log('Created ' + counter + ' tables in BigQuery.')
-              response.status(200).send({ tablesCreated: counter })
+              resolve({ tablesCreated: counter })
             })
             .catch(error => {
               reject(error)
@@ -174,94 +174,96 @@ exports.transportDataToBigQuery = (datasetName, collectionNames) => {
    * This has to be run locally on your computer (firebase serve --only functions).
    */
 
-  let counter = 0
-  const { BigQuery }    = require('@google-cloud/bigquery'),
-        bigQuery        = new BigQuery(),
-        dataset         = bigQuery.dataset(datasetName),
-        promises        = []
+  return new Promise((resolve, reject) => {
+    let counter = 0
+    const { BigQuery }    = require('@google-cloud/bigquery'),
+          bigQuery        = new BigQuery(),
+          dataset         = bigQuery.dataset(datasetName),
+          promises        = []
 
-  collectionNames.forEach(n => {
-    promises.push(
-      firestore.collection(n).get()
-        .then(s => {
-          console.log('Starting ' + n + ' (' + s.size + ' docs)')
-          promises.push(
-            transportToBigQuery(n, s)
-              .then(() => {
-                console.log('Completed ' + n)
-              })
-              .catch(error => {
-                console.error('Error copying ' + n + ': ' + error)
-              })
-          )
-        })
-        .catch(error => {
-          console.error(error)
-          response.status(500).send(error)
-        })
-    )
-  })
-
-  setTimeout(() => {
-    Promise.all(promises)
-      .then(() => {
-        console.log('Copied ' + counter + ' documents to BigQuery.')
-        response.status(200).send({ documentsCopied: counter })
-      })
-      .catch(error => {
-        console.error(error)
-        response.status(500).send(error)
-      })
-  }, 30000)
-
-  function transportToBigQuery (collectionName, snapshot) {
-    return new Promise((resolve, reject) => {
-      snapshot.forEach(doc => {
-        doc = doc.data()
-        const row = {}
-
-        Object.keys(doc).forEach(propName => {
-          const formattedProp = formatProp(doc[propName], propName)
-          if (formattedProp !== undefined) row[formatName(propName)] = formattedProp
-        })
-
-        dataset.table(collectionName).insert(row, { writeDisposition: 'WRITE_TRUNCATE' })
-          .then(res => {
-            counter++
-            resolve(res)
+    collectionNames.forEach(n => {
+      promises.push(
+        firestore.collection(n).get()
+          .then(s => {
+            console.log('Starting ' + n + ' (' + s.size + ' docs)')
+            promises.push(
+              transportToBigQuery(n, s)
+                .then(() => {
+                  console.log('Completed ' + n)
+                })
+                .catch(error => {
+                  console.error('Error copying ' + n + ': ' + error)
+                })
+            )
           })
           .catch(error => {
             console.error(error)
-            console.error(error.errors)
-            console.error(error.errors[0])
             reject(error)
           })
+      )
+    })
 
-        function formatProp (val, propName) {
-          if (val === null) {
+    setTimeout(() => {
+      Promise.all(promises)
+        .then(() => {
+          console.log('Copied ' + counter + ' documents to BigQuery.')
+          resolve({ documentsCopied: counter })
+        })
+        .catch(error => {
+          console.error(error)
+          reject(error)
+        })
+    }, 30000)
+
+    function transportToBigQuery (collectionName, snapshot) {
+      return new Promise((resolve, reject) => {
+        snapshot.forEach(doc => {
+          doc = doc.data()
+          const row = {}
+
+          Object.keys(doc).forEach(propName => {
+            const formattedProp = formatProp(doc[propName], propName)
+            if (formattedProp !== undefined) row[formatName(propName)] = formattedProp
+          })
+
+          dataset.table(collectionName).insert(row, { writeDisposition: 'WRITE_TRUNCATE' })
+            .then(res => {
+              counter++
+              resolve(res)
+            })
+            .catch(error => {
+              console.error(error)
+              console.error(error.errors)
+              console.error(error.errors[0])
+              reject(error)
+            })
+
+          function formatProp (val, propName) {
+            if (val === null) {
+              return val
+            }
+            if (Array.isArray(val)) {
+              let s = ''
+              for (let i = 0; i < val.length; i++) {
+                s += val[i] + (i < val.length - 1 ? ',' : '')
+              }
+              return s
+            }
+            else if (typeof val === 'object' && Object.keys(val).length) {
+              Object.keys(val).forEach(subPropName => {
+                const formattedProp = formatProp(val[subPropName], subPropName)
+                if (formattedProp !== undefined) row[formatName(subPropName, propName)] = formattedProp
+              })
+              return undefined
+            }
             return val
           }
-          if (Array.isArray(val)) {
-            let s = ''
-            for (let i = 0; i < val.length; i++) {
-              s += val[i] + (i < val.length - 1 ? ',' : '')
-            }
-            return s
-          }
-          else if (typeof val === 'object' && Object.keys(val).length) {
-            Object.keys(val).forEach(subPropName => {
-              const formattedProp = formatProp(val[subPropName], subPropName)
-              if (formattedProp !== undefined) row[formatName(subPropName, propName)] = formattedProp
-            })
-            return undefined
-          }
-          return val
-        }
 
-        function formatName (propName, parent) {
-          return parent ? parent + '__' + propName : propName
-        }
+          function formatName (propName, parent) {
+            return parent ? parent + '__' + propName : propName
+          }
+        })
       })
-    })
-  }
+    }
+  })
 }

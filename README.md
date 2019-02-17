@@ -1,8 +1,9 @@
 # Firestore to BigQuery export
 An automatic tool for copying and converting [Cloud Firestore](https://firebase.google.com/docs/firestore/) data to [BigQuery](https://cloud.google.com/bigquery/docs/).
 
-- Import/Export CSV, Excel, or JSON files to/from Firestore.
-- Encode/Decode Firestore data types such as GeoPoint, Reference, Timestamp, etc.
+- Create a BigQuery dataset with tables corresponding to your Firestore collections.
+- Table schemas are automatically generated based on your document property data types.
+- Convert and copy your Firestore collections to BigQuery.
 
 
 ## Installation
@@ -33,7 +34,7 @@ First, you need to set up a BigQuery dataset with the appropriate tables and tab
     })
 ```
 
-Then, you can transport your data.
+Then, you can transport your data:
 ```
   bigExport.transportDataToBigQuery('firestore', [
     'payments',
@@ -50,6 +51,11 @@ Then, you can transport your data.
       response.status(500).send(error)
     })
 ```
+
+## Limitations
+- Your Firestore data model should be consistent. If a property of documents in the same collection have different data types, you'll get errors.
+- Patching existing BigQuery sets isn't supported (yet). To refresh your datasets, you should empty or delete the tables before running `transportDataToBigQiery()`.
+- Changed your Firestore data model? Delete the corresponding BigQuery table and run `initializeBigQuery()` to create a table with a new schema. 
 
 ## Issues
 Please use the [issue tracker](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues).
