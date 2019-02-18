@@ -55,13 +55,12 @@ exports.setBigQueryConfig = serviceAccountFile => {
  * @public
  */
 exports.initializeBigQuery = (datasetID, collectionNames) => {
+  let counter = 0
+  const dataset        = bigQuery.dataset(datasetID),
+        existingTables = [],
+        promises       = []
+
   return new Promise((resolve, reject) => {
-    let counter = 0
-
-    const dataset        = bigQuery.dataset(datasetID),
-          existingTables = [],
-          promises       = []
-
     dataset.exists()
       .then(res => {
         if (res[0]) {
@@ -223,11 +222,11 @@ exports.initializeBigQuery = (datasetID, collectionNames) => {
  * @public
  */
 exports.transportDataToBigQuery = (datasetID, collectionNames) => {
-  return new Promise((resolve, reject) => {
-    let counter = 0
-    const dataset  = bigQuery.dataset(datasetID),
-          promises = []
+  let counter = 0
+  const dataset  = bigQuery.dataset(datasetID),
+        promises = []
 
+  return new Promise((resolve, reject) => {
     collectionNames.forEach(n => {
       promises.push(
         firestore.collection(n).get()

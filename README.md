@@ -13,7 +13,7 @@ Then
 * `import bigExport from 'firestore-to-bigquery-export'`
 
 Or
-* `const bigExport = require('firestore-to-bigquery-export`
+* `const bigExport = require('firestore-to-bigquery-export')`
 
 Then
 ```
@@ -39,16 +39,16 @@ bigExport.setFirebaseConfig(GCPSA)
  */
 
 bigExport.initializeBigQuery('firestore', [
-'payments',
-'profiles',
-'ratings',
-'users'
+    'payments',
+    'profiles',
+    'ratings',
+    'users'
 ])
 .then(res => {
-  console.log(res)
+    console.log(res)
 })
 .catch(error => {
-  console.error(error)
+    console.error(error)
 })
 ```
 
@@ -60,24 +60,24 @@ Then, you can transport your data:
  */
 
 bigExport.transportDataToBigQuery('firestore', [
-'payments',
-'profiles',
-'ratings',
-'users'
+    'payments',
+    'profiles',
+    'ratings',
+    'users'
 ])
 .then(res => {
-  console.log(res)
+    console.log(res)
 })
 .catch(error => {
-  console.error(error)
+    console.error(error)
 })
 ```
 
 ## Limitations
 * Your Firestore data model should be consistent. If a property of documents in the same collection have different data types, you'll get errors.
-* Patching existing BigQuery sets isn't supported (yet). To refresh your datasets, you should empty or delete the tables before running `transportDataToBigQyery()`.
+* Patching existing BigQuery sets isn't supported (yet). To refresh your datasets, you should empty or delete the tables before running `transportDataToBigQuery()`.
 * Changed your Firestore data model? Delete the corresponding BigQuery table and run `initializeBigQuery()` to create a table with a new schema.
-* When running this packet via a Cloud Function, you may experience that your function times out if your Firestore is large. You can then:
+* When running this package via a Cloud Function, you may experience that your function times out if your Firestore is large. You can then:
     * Increase the timeout for your Cloud Function in the [Google Cloud Platform Cloud Function Console](https://console.cloud.google.com/functions).
     * Run your function locally, using `firebase serve --only functions`. 
 
