@@ -1,6 +1,6 @@
 {
   "name": "firestore-to-bigquery-export",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "description": "An automatic tool for copying and converting Firestore data to BigQuery.",
   "main": "index.js",
   "scripts": {
