@@ -1,3 +1,10 @@
+## 1.1.0 (2019-02-28)
+
+* Fixed bug that blocked the Firebase instance from intializing if another instance already was initialized in the users code. ([d7b5baa](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/d7b5baa))
+* Reverted to defining datasetID in each function call, instead of globally.  ([d7b5baa](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/d7b5baa))
+
+
+
 ## 1.0.0 (2019-02-24)
 
 * Improved API. ([5531576](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/5531576))
