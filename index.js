@@ -16,7 +16,6 @@
 let { BigQuery } = require('@google-cloud/bigquery'),
     bigQuery     = {},
     currentRow   = {},
-    dataset      = undefined,
     firebase     = require('firebase-admin'),
     firestore    = {}
 
@@ -27,10 +26,9 @@ let { BigQuery } = require('@google-cloud/bigquery'),
  * @public
  */
 exports.setFirebaseConfig = serviceAccountFile => {
-  firebase.initializeApp({
+  firestore = firebase.initializeApp({
     credential: firebase.credential.cert(serviceAccountFile)
-  })
-  firestore = firebase.firestore()
+  }, 'firestore-to-bigquery-export-instance').firestore()
 }
 
 /**
@@ -47,87 +45,76 @@ exports.setBigQueryConfig = serviceAccountFile => {
 }
 
 /**
- * Choosing what BigQuery dataset to use.
- *
- * @param {String} datasetID
- * @public
- */
-exports.setBigQueryDataset = datasetID => {
-  dataset = bigQuery.dataset(datasetID)
-}
-
-/**
  * Creating a BigQuery dataset with the given name if it doesn't already exist.
- * Running through each collection and checking if a table with the same name exists in the dataset.
+ * Running through each collection and checking if a table with the same name exists
+ * in the bigQuery.dataset(datasetID).
+ *
  * Creating the tables with the correct schema if the table doesn't already exist.
  *
+ * @param {string} datasetID
  * @param {Array} collectionNames
  * @returns {Promise<Number>}
  * @public
  */
-exports.createBigQueryTables = collectionNames => {
-  let counter = 0
-  const existingTables = [],
-        promises       = []
-
+exports.createBigQueryTables = (datasetID, collectionNames) => {
   return new Promise((resolve, reject) => {
-    dataset.exists()
-      .then(res => {
-        if (res[0]) {
-          dataset.getTables()
-            .then(tables => {
-              tables[0].forEach(table => {
-                existingTables.push(table.id)
-              })
+    let counter = 0
+    const existingTables = [],
+          promises       = []
 
-              console.log('Existing tables:')
-              console.log(existingTables)
+    verifyOrCreateDataset(datasetID)
+      .then(() => {
+        bigQuery.dataset(datasetID).getTables()
+          .then(tables => {
+            tables[0].forEach(table => {
+              existingTables.push(table.id)
+            })
 
-              collectionNames.forEach(collectionName => {
-                if (!existingTables.includes(collectionName)) {
-                  promises.push(
-                    createTableWithSchema(collectionName)
-                      .then(() => counter++)
-                  )
-                }
-              })
-            })
-            .catch(error => {
-              console.error(error)
-              reject(error)
-            })
-        }
-        else {
-          bigQuery.createDataset(datasetID)
-            .then(() => {
-              collectionNames.forEach(collectionName => {
+            console.log('Existing tables:')
+            console.log(existingTables)
+
+            collectionNames.forEach(collectionName => {
+              if (!existingTables.includes(collectionName)) {
                 promises.push(
-                  createTableWithSchema(collectionName)
+                  createTableWithSchema(datasetID, collectionName)
                     .then(() => counter++)
                 )
-              })
+              }
             })
-            .catch(error => {
-              console.error(error)
-              reject(error)
-            })
-        }
 
-        setTimeout(() => {
-          Promise.all(promises)
-            .then(() => {
-              console.log('Created ' + counter + ' tables in BigQuery.')
-              resolve(counter)
-            })
-            .catch(error => {
-              reject(error)
-            })
-        }, 10000)
+            Promise.all(promises)
+              .then(() => {
+                console.log('Created ' + counter + ' tables in BigQuery.')
+                resolve(counter)
+              })
+              .catch(e => reject(e))
+          })
+          .catch(e => reject(e))
       })
-      .catch(error => {
-        console.error(error)
-        reject(error)
+      .catch(e => reject(e))
+  })
+}
+
+/**
+ * Checking if a dataset with the given ID exists. Creating it if it doesn't.
+ *
+ * @param {string} datasetID
+ * @returns {Promise<boolean||BigQuery.Dataset>}
+ * @private
+ */
+function verifyOrCreateDataset (datasetID) {
+  return new Promise((resolve, reject) => {
+    bigQuery.dataset(datasetID).exists()
+      .then(res => {
+        if (res[0]) resolve(res)
+        else {
+          console.log('Dataset ' + datasetID + ' not found. Creating it.')
+          bigQuery.createDataset(datasetID)
+            .then(res => resolve(res))
+            .catch(e => reject(e))
+        }
       })
+      .catch(e => reject(e))
   })
 }
 
@@ -135,11 +122,14 @@ exports.createBigQueryTables = collectionNames => {
  * Runs through all documents in the given collection
  * to ensure all properties are added to the schema.
  *
- * @param collectionName
+ * Generating schema. Creating a table with the created schema in the given dataset.
+ *
+ * @param {string} datasetID
+ * @param {string} collectionName
  * @returns {Promise<BigQuery.Table>}
  * @private
  */
-function createTableWithSchema (collectionName) {
+function createTableWithSchema (datasetID, collectionName) {
   return new Promise((resolve, reject) => {
     firestore.collection(collectionName).get()
       .then(documents => {
@@ -170,21 +160,16 @@ function createTableWithSchema (collectionName) {
           })
         })
 
-        dataset.createTable(collectionName, options)
-          .then(res => {
-            resolve(res)
-          })
-          .catch(error => {
-            console.error(error)
-            reject(error)
-          })
+        bigQuery.dataset(datasetID).createTable(collectionName, options)
+          .then(res => resolve(res))
+          .catch(e => reject(e))
 
         /**
          * Determines schema field properties based on the given document property.
          *
-         * @param {String||Number||Array||Object} val
-         * @param {String} propName
-         * @param {String} parent
+         * @param {string||number||Array||Object} val
+         * @param {string} propName
+         * @param {string} parent
          * @returns {Object||undefined}
          * @private
          */
@@ -243,10 +228,7 @@ function createTableWithSchema (collectionName) {
           else console.error(collectionName + '.' + propName + ' error! Type: ' + typeof val)
         }
       })
-      .catch(error => {
-        console.error(error)
-        reject(error)
-      })
+      .catch(e => reject(e))
   })
 }
 
@@ -254,62 +236,59 @@ function createTableWithSchema (collectionName) {
  * Iterate through the listed collections. Convert each document to a format suitable for BigQuery,
  * and insert them into a table corresponding to the collection name.
  *
+ * @param {string} datasetID
  * @param {Array} collectionNames
  * @returns {Promise<Number>}
  * @public
  */
-exports.copyCollectionsToBigQuery = collectionNames => {
+exports.copyCollectionsToBigQuery = (datasetID, collectionNames) => {
   let counter = 0
   const promises = []
 
   return new Promise((resolve, reject) => {
-    collectionNames.forEach(n => {
-      promises.push(
-        firestore.collection(n).get()
-          .then(s => {
-            console.log('Starting ' + n + ' (' + s.size + ' docs)')
-            promises.push(
-              copyToBigQuery(n, s)
-                .then(() => {
-                  console.log('Completed ' + n)
-                  counter++
-                })
-                .catch(error => {
-                  console.error('Error copying ' + n + ': ' + error)
-                  console.error(error)
-                  console.error(error.errors)
-                  console.error(error.errors[0])
-                })
-            )
-          })
-          .catch(error => {
-            console.error(error)
-            reject(error)
-          })
-      )
-    })
+    verifyOrCreateDataset(datasetID)
+      .then(() => {
+        collectionNames.forEach(n => {
+          promises.push(
+            firestore.collection(n).get()
+              .then(s => {
+                console.log('Starting ' + n + ' (' + s.size + ' docs)')
 
-    setTimeout(() => {
-      Promise.all(promises)
-        .then(() => {
-          console.log('Copied ' + counter + ' collections to BigQuery.')
-          resolve(counter)
+                promises.push(
+                  copyToBigQuery(datasetID, n, s)
+                    .then(() => {
+                      console.log('Completed ' + n)
+                      counter++
+                    })
+                    .catch(error => {
+                      console.error('Error copying ' + n + ': ' + error)
+                      console.error(error)
+                    })
+                )
+              })
+              .catch(e => reject(e)))
         })
-        .catch(error => {
-          console.error(error)
-          reject(error)
-        })
-    }, 30000)
+        setTimeout(() => {
+          Promise.all(promises)
+            .then(() => {
+              console.log('Copied ' + counter + ' collections to BigQuery.')
+              resolve(counter)
+            })
+            .catch(e => reject(e))
+        }, 30000)
+      })
+      .catch(e => reject(e))
   })
 }
 
 /**
- * @param {String} collectionName
+ * @param {string} datasetID
+ * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
  * @returns {Promise<Object>}
  * @private
  */
-function copyToBigQuery (collectionName, snapshot) {
+function copyToBigQuery (datasetID, collectionName, snapshot) {
   return new Promise((resolve, reject) => {
     snapshot.forEach(doc => {
       const doc_ID = doc.id,
@@ -323,19 +302,19 @@ function copyToBigQuery (collectionName, snapshot) {
         if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
       })
 
-      dataset.table(collectionName).insert(currentRow)
+      bigQuery.dataset(datasetID).table(collectionName).insert(currentRow)
         .then(res => resolve(res))
-        .catch(error => {
-          reject(error)
-        })
+        .catch(e => reject(e))
     })
   })
 }
 
 /**
- * @param {String||Number||Array||Object} val
- * @param {String} propName
- * @returns {String||Number||Array||Object}
+ * Converting a given Firestore property to a format suitable for BigQuery.
+ *
+ * @param {string||number||Array||Object} val
+ * @param {string} propName
+ * @returns {string||number||Array||Object}
  * @private
  */
 function formatProp (val, propName) {
@@ -360,8 +339,11 @@ function formatProp (val, propName) {
 }
 
 /**
- * @param {String} propName
- * @param {String} [parent = undefined]
+ * Formatting the property name to work with BigQuery.
+ * Objects with child props are prefixed with the parent name.
+ *
+ * @param {string} propName
+ * @param {string} [parent = undefined]
  * @returns {string}
  * @private
  */
@@ -371,27 +353,26 @@ function formatName (propName, parent) {
 }
 
 /**
+ * Deletes all the given tables.
  *
- * @param tableNames
- * @returns {Promise<Number>}
+ * @param {string} datasetID
+ * @param {Array} tableNames
+ * @returns {Promise<number>}
  * @public
  */
-exports.deleteBigQueryTables = tableNames => {
+exports.deleteBigQueryTables = (datasetID, tableNames) => {
   let counter = 0
   const promises = []
 
   return new Promise((resolve, reject) => {
     tableNames.forEach(n => {
       promises.push(
-        dataset.table(n).delete()
+        bigQuery.dataset(datasetID).table(n).delete()
           .then(s => {
             console.log('Deleted table ' + n)
             counter++
           })
-          .catch(error => {
-            console.error(error)
-            reject(error)
-          })
+          .catch(e => reject(e))
       )
     })
 
@@ -400,9 +381,6 @@ exports.deleteBigQueryTables = tableNames => {
         console.log('Deleted ' + counter + ' tables.')
         resolve(counter)
       })
-      .catch(error => {
-        console.error(error)
-        reject(error)
-      })
+      .catch(e => reject(e))
   })
 }
