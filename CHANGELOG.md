@@ -1,3 +1,10 @@
+## 1.2.0 (2019-03-09)
+
+* Added strict Eslint policy. ([20ee970](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/20ee970))
+* Improved performance and reduced footprint. ([f0bcf00](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/f0bcf00))
+
+
+
 ## 1.1.0 (2019-02-28)
 
 * Fixed bug that blocked the Firebase instance from intializing if another instance already was initialized in the users code. ([d7b5baa](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/d7b5baa))
