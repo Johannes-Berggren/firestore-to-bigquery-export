@@ -57,42 +57,20 @@ exports.setBigQueryConfig = serviceAccountFile => {
  * @public
  */
 exports.createBigQueryTables = (datasetID, collectionNames) => {
-  return new Promise((resolve, reject) => {
-    let counter = 0
-    const existingTables = [],
-          promises       = []
+  return verifyOrCreateDataset(datasetID)
+    .then(() => {
+      return bigQuery.dataset(datasetID).getTables()
+    })
+    .then(tables => {
+      const existingTables = tables[0].map(table => table.id)
 
-    verifyOrCreateDataset(datasetID)
-      .then(() => {
-        bigQuery.dataset(datasetID).getTables()
-          .then(tables => {
-            tables[0].forEach(table => {
-              existingTables.push(table.id)
-            })
-
-            console.log('Existing tables:')
-            console.log(existingTables)
-
-            collectionNames.forEach(collectionName => {
-              if (!existingTables.includes(collectionName)) {
-                promises.push(
-                  createTableWithSchema(datasetID, collectionName)
-                    .then(() => counter++)
-                )
-              }
-            })
-
-            Promise.all(promises)
-              .then(() => {
-                console.log('Created ' + counter + ' tables in BigQuery.')
-                resolve(counter)
-              })
-              .catch(e => reject(e))
-          })
-          .catch(e => reject(e))
-      })
-      .catch(e => reject(e))
-  })
+      return Promise.all(collectionNames.map(n => {
+        if (!existingTables.includes(n)) {
+          return createTableWithSchema(datasetID, n)
+        }
+        throw new Error('Table ' + n + ' already exists.')
+      }))
+    })
 }
 
 /**
@@ -103,19 +81,11 @@ exports.createBigQueryTables = (datasetID, collectionNames) => {
  * @private
  */
 function verifyOrCreateDataset (datasetID) {
-  return new Promise((resolve, reject) => {
-    bigQuery.dataset(datasetID).exists()
-      .then(res => {
-        if (res[0]) resolve(res)
-        else {
-          console.log('Dataset ' + datasetID + ' not found. Creating it.')
-          bigQuery.createDataset(datasetID)
-            .then(res => resolve(res))
-            .catch(e => reject(e))
-        }
-      })
-      .catch(e => reject(e))
-  })
+  return bigQuery.dataset(datasetID).exists()
+    .then(res => {
+      return res[0] || bigQuery.createDataset(datasetID)
+    })
+    .catch(e => e)
 }
 
 /**
@@ -130,106 +100,102 @@ function verifyOrCreateDataset (datasetID) {
  * @private
  */
 function createTableWithSchema (datasetID, collectionName) {
-  return new Promise((resolve, reject) => {
-    firestore.collection(collectionName).get()
-      .then(documents => {
-        const index   = [],
-              options = {
-                schema: {
-                  fields: [
-                    {
-                      name: 'doc_ID',
-                      type: 'STRING',
-                      mode: 'REQUIRED'
-                    }
-                  ]
-                }
+  const index   = [],
+        options = {
+          schema: {
+            fields: [
+              {
+                name: 'doc_ID',
+                type: 'STRING',
+                mode: 'REQUIRED'
               }
+            ]
+          }
+        }
 
-        console.log('Creating schema for table ' + collectionName)
+  return firestore.collection(collectionName).get()
+    .then(documents => {
+      console.log('Creating schema and table ' + collectionName + '.')
 
-        documents.forEach(document => {
-          document = document.data()
+      documents.forEach(document => {
+        document = document.data()
 
-          Object.keys(document).forEach(propName => {
-            const schemaField = getSchemaField(document[propName], propName)
-            if (schemaField !== undefined && !index.includes(schemaField.name)) {
-              options.schema.fields.push(schemaField)
-              index.push(schemaField.name)
-            }
-          })
+        Object.keys(document).forEach(propName => {
+          const schemaField = getSchemaField(document[propName], propName)
+          if (schemaField !== undefined && !index.includes(schemaField.name)) {
+            options.schema.fields.push(schemaField)
+            index.push(schemaField.name)
+          }
         })
+      })
 
-        bigQuery.dataset(datasetID).createTable(collectionName, options)
-          .then(res => resolve(res))
-          .catch(e => reject(e))
+      return bigQuery.dataset(datasetID).createTable(collectionName, options)
+    })
+    .catch(e => e)
 
-        /**
-         * Determines schema field properties based on the given document property.
-         *
-         * @param {string||number||Array||Object} val
-         * @param {string} propName
-         * @param {string} parent
-         * @returns {Object||undefined}
-         * @private
-         */
-        function getSchemaField (val, propName, parent) {
-          const field = {
-            name: parent ? parent + '__' + propName : propName,
-            mode: '',
-            type: ''
-          }
+  /**
+   * Determines schema field properties based on the given document property.
+   *
+   * @param {string||number||Array||Object} val
+   * @param {string} propName
+   * @param {string} parent
+   * @returns {Object||undefined}
+   * @private
+   */
+  function getSchemaField (val, propName, parent) {
+    const field = {
+      name: parent ? parent + '__' + propName : propName,
+      mode: '',
+      type: ''
+    }
 
-          if (val === null) {
-            field.type = 'STRING'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (typeof val === 'undefined') {
-            field.type = 'STRING'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (typeof val === 'string') {
-            field.type = 'STRING'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (typeof val === 'number') {
-            Number.isInteger(val) ? field.type = 'INTEGER' : field.type = 'FLOAT'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (typeof val === 'boolean') {
-            field.type = 'BOOL'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (Array.isArray(val)) {
-            field.type = 'STRING'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else if (typeof val === 'object' && Object.keys(val).length) {
-            Object.keys(val).forEach(subPropName => {
-              const schemaField = getSchemaField(val[subPropName], subPropName, propName)
-              if (schemaField !== undefined && !index.includes(schemaField.name)) {
-                options.schema.fields.push(schemaField)
-                index.push(schemaField.name)
-              }
-            })
-            return undefined
-          }
-          else if (typeof val === 'object' && !Object.keys(val).length) {
-            field.type = 'STRING'
-            field.mode = 'NULLABLE'
-            return field
-          }
-          else console.error(collectionName + '.' + propName + ' error! Type: ' + typeof val)
+    if (val === null) {
+      field.type = 'STRING'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (typeof val === 'undefined') {
+      field.type = 'STRING'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (typeof val === 'string') {
+      field.type = 'STRING'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (typeof val === 'number') {
+      Number.isInteger(val) ? field.type = 'INTEGER' : field.type = 'FLOAT'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (typeof val === 'boolean') {
+      field.type = 'BOOL'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (Array.isArray(val)) {
+      field.type = 'STRING'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else if (typeof val === 'object' && Object.keys(val).length) {
+      Object.keys(val).forEach(subPropName => {
+        const schemaField = getSchemaField(val[subPropName], subPropName, propName)
+        if (schemaField !== undefined && !index.includes(schemaField.name)) {
+          options.schema.fields.push(schemaField)
+          index.push(schemaField.name)
         }
       })
-      .catch(e => reject(e))
-  })
+      return undefined
+    }
+    else if (typeof val === 'object' && !Object.keys(val).length) {
+      field.type = 'STRING'
+      field.mode = 'NULLABLE'
+      return field
+    }
+    else console.error(collectionName + '.' + propName + ' error! Type: ' + typeof val)
+  }
 }
 
 /**
@@ -242,43 +208,13 @@ function createTableWithSchema (datasetID, collectionName) {
  * @public
  */
 exports.copyCollectionsToBigQuery = (datasetID, collectionNames) => {
-  let counter = 0
-  const promises = []
-
-  return new Promise((resolve, reject) => {
-    verifyOrCreateDataset(datasetID)
-      .then(() => {
-        collectionNames.forEach(n => {
-          promises.push(
-            firestore.collection(n).get()
-              .then(s => {
-                console.log('Starting ' + n + ' (' + s.size + ' docs)')
-
-                promises.push(
-                  copyToBigQuery(datasetID, n, s)
-                    .then(() => {
-                      console.log('Completed ' + n)
-                      counter++
-                    })
-                    .catch(error => {
-                      console.error('Error copying ' + n + ': ' + error)
-                      console.error(error)
-                    })
-                )
-              })
-              .catch(e => reject(e)))
-        })
-        setTimeout(() => {
-          Promise.all(promises)
-            .then(() => {
-              console.log('Copied ' + counter + ' collections to BigQuery.')
-              resolve(counter)
-            })
-            .catch(e => reject(e))
-        }, 30000)
-      })
-      .catch(e => reject(e))
-  })
+  return verifyOrCreateDataset(datasetID)
+    .then(() => {
+      return Promise.all(collectionNames.map(n => {
+        return firestore.collection(n).get()
+          .then(s => copyToBigQuery(datasetID, n, s))
+      }))
+    })
 }
 
 /**
@@ -289,24 +225,23 @@ exports.copyCollectionsToBigQuery = (datasetID, collectionNames) => {
  * @private
  */
 function copyToBigQuery (datasetID, collectionName, snapshot) {
-  return new Promise((resolve, reject) => {
-    snapshot.forEach(doc => {
-      const doc_ID = doc.id,
-            data   = doc.data()
+  console.log('Copying ' + collectionName + ' to dataset ' + datasetID + '.')
 
-      currentRow = {}
+  return Promise.all(snapshot.docs.map(doc => {
+    const docID = doc.id,
+          data  = doc.data()
 
-      Object.keys(data).forEach(propName => {
-        currentRow['doc_ID'] = doc_ID
-        const formattedProp = formatProp(data[propName], propName)
-        if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
-      })
+    currentRow = {}
 
-      bigQuery.dataset(datasetID).table(collectionName).insert(currentRow)
-        .then(res => resolve(res))
-        .catch(e => reject(e))
+    Object.keys(data).forEach(propName => {
+      currentRow['doc_ID'] = docID
+      const formattedProp = formatProp(data[propName], propName)
+      if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
     })
-  })
+
+    return bigQuery.dataset(datasetID).table(collectionName).insert(currentRow)
+  }))
+    .catch(e => e)
 }
 
 /**
@@ -361,26 +296,8 @@ function formatName (propName, parent) {
  * @public
  */
 exports.deleteBigQueryTables = (datasetID, tableNames) => {
-  let counter = 0
-  const promises = []
-
-  return new Promise((resolve, reject) => {
-    tableNames.forEach(n => {
-      promises.push(
-        bigQuery.dataset(datasetID).table(n).delete()
-          .then(s => {
-            console.log('Deleted table ' + n)
-            counter++
-          })
-          .catch(e => reject(e))
-      )
-    })
-
-    Promise.all(promises)
-      .then(() => {
-        console.log('Deleted ' + counter + ' tables.')
-        resolve(counter)
-      })
-      .catch(e => reject(e))
-  })
+  return Promise.all(tableNames.map(n => {
+    console.log('Deleting table ' + n + '.')
+    return bigQuery.dataset(datasetID).table(n).delete()
+  }))
 }

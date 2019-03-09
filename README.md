@@ -54,9 +54,9 @@ bigExport.setFirebaseConfig(GCPSA)
 ### API
 * `bigExport.setBigQueryConfig(serviceAccountFile:JSON)`
 * `bigExport.setFirebaseConfig(serviceAccountFile:JSON)`
-* `bigExport.createBigQueryTables(datasetID:string, collectionNames:Array):Promise<number>`
-* `bigExport.copyCollectionsToBigQuery(datasetID:string, collectionNames:Array):Promise<number>`
-* `bigExport.deleteBigQueryTables(datasetID:string, tableNames:Array):Promise<number>`
+* `bigExport.createBigQueryTables(datasetID:string, collectionNames:Array):Promise<Array>`
+* `bigExport.copyCollectionsToBigQuery(datasetID:string, collectionNames:Array):Promise<Array>`
+* `bigExport.deleteBigQueryTables(datasetID:string, tableNames:Array):Promise<Array>`
 
 
 ### Examples
