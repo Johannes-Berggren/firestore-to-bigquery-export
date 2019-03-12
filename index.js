@@ -57,10 +57,11 @@ exports.setBigQueryConfig = serviceAccountFile => {
  * @public
  */
 exports.createBigQueryTables = (datasetID, collectionNames) => {
-  return verifyOrCreateDataset(datasetID)
-    .then(() => {
-      return bigQuery.dataset(datasetID).getTables()
+  return bigQuery.dataset(datasetID).exists()
+    .then(res => {
+      return res[0] || bigQuery.createDataset(datasetID)
     })
+    .then(() => bigQuery.dataset(datasetID).getTables())
     .then(tables => {
       const existingTables = tables[0].map(table => table.id)
 
@@ -71,21 +72,6 @@ exports.createBigQueryTables = (datasetID, collectionNames) => {
         throw new Error('Table ' + n + ' already exists.')
       }))
     })
-}
-
-/**
- * Checking if a dataset with the given ID exists. Creating it if it doesn't.
- *
- * @param {string} datasetID
- * @returns {Promise<boolean||BigQuery.Dataset>}
- * @private
- */
-function verifyOrCreateDataset (datasetID) {
-  return bigQuery.dataset(datasetID).exists()
-    .then(res => {
-      return res[0] || bigQuery.createDataset(datasetID)
-    })
-    .catch(e => e)
 }
 
 /**
@@ -199,33 +185,16 @@ function createTableWithSchema (datasetID, collectionName) {
 }
 
 /**
- * Iterate through the listed collections. Convert each document to a format suitable for BigQuery,
- * and insert them into a table corresponding to the collection name.
- *
- * @param {string} datasetID
- * @param {Array} collectionNames
- * @returns {Promise<Number>}
- * @public
- */
-exports.copyCollectionsToBigQuery = (datasetID, collectionNames) => {
-  return verifyOrCreateDataset(datasetID)
-    .then(() => {
-      return Promise.all(collectionNames.map(n => {
-        return firestore.collection(n).get()
-          .then(s => copyToBigQuery(datasetID, n, s))
-      }))
-    })
-}
-
-/**
  * @param {string} datasetID
  * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
  * @returns {Promise<Object>}
- * @private
+ * @public
  */
-function copyToBigQuery (datasetID, collectionName, snapshot) {
+exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
   console.log('Copying ' + collectionName + ' to dataset ' + datasetID + '.')
+
+  let counter = 0
 
   return Promise.all(snapshot.docs.map(doc => {
     const docID = doc.id,
@@ -239,8 +208,10 @@ function copyToBigQuery (datasetID, collectionName, snapshot) {
       if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
     })
 
+    counter++
     return bigQuery.dataset(datasetID).table(collectionName).insert(currentRow)
   }))
+    .then(() => counter)
     .catch(e => e)
 }
 

@@ -55,7 +55,7 @@ bigExport.setFirebaseConfig(GCPSA)
 * `bigExport.setBigQueryConfig(serviceAccountFile:JSON)`
 * `bigExport.setFirebaseConfig(serviceAccountFile:JSON)`
 * `bigExport.createBigQueryTables(datasetID:string, collectionNames:Array):Promise<Array>`
-* `bigExport.copyCollectionsToBigQuery(datasetID:string, collectionNames:Array):Promise<Array>`
+* `bigExport.copyToBigQuery(datasetID:string, collectionName:string, snapshot:firebase.firestore.QuerySnapshot):Promise<number>`
 * `bigExport.deleteBigQueryTables(datasetID:string, tableNames:Array):Promise<Array>`
 
 
@@ -82,23 +82,39 @@ bigExport.createBigQueryTables('firestore', [
 
 Then, you can transport your data:
 ```
-/* Copying and converting all documents in the given collections.
+/* Copying and converting all documents in the given QuerySnapshot.
  * Inserting each document as a row in tables with the same name as the collection, in the dataset named 'firestore'.
  * Cells (document properties) that doesn't match the table schema will be rejected.
  */
+ 
+firebase.collection('payments').get()
+    .then(snapshot => bigExport.copyToBigQuery('firestore', 'payments', snapshot))
+    .then(res => {
+        console.log('Copied ' + res + ' documents to BigQuery.')
+    })
+    .catch(error => {
+        console.error(error)
+    })
 
-bigExport.copyCollectionsToBigQuery('firestore', [
-    'payments',
-    'profiles',
-    'ratings',
-    'users'
-])
-.then(res => {
-    console.log(res)
-})
-.catch(error => {
-    console.error(error)
-})
+/*
+ * You can do multiple collections async, like this.
+ *
+ * If you get error messages, you should probably copy fewer collections at a time.
+ */
+
+const collectionNames = ['payments', 'profiles', 'ratings', 'users']
+
+Promise.all(collectionNames.map(n => {
+    return firestore.collection(n).get()
+      .then(c => bigExport.copyToBigQuery('firestore', n, c))
+  }))
+    .then(res => {
+      response.status(200).send('Copied ' + res + ' documents to BigQuery.')
+    })
+    .catch(error => {
+      console.error(error)
+      response.status(error.code).send(error)
+    })
 ```
 
 After that, you may want to refresh your data. For the time being, the quick and dirty way is to delete your tables and make new ones:
@@ -123,7 +139,7 @@ bigExport.deleteBigQueryTables('firestore', [
 * Your Firestore data model should be consistent. If a property of documents in the same collection have different data types, you'll get errors.
 * Patching existing BigQuery sets isn't supported (yet). To refresh your datasets, you can `deleteBigQueryTables()`, then `createBigQueryTables()` and then `copyCollectionsToBigQuery()`.
 * Changed your Firestore data model? Delete the corresponding BigQuery table and run `createBigQueryTables()` to create a table with a new schema.
-* When running this package via a Cloud Function, you may experience that your function times out if your Firestore is large. You can then:
+* When running this package via a Cloud Function, you may experience that your function times out if your Firestore is large, (Deadline Exceeded). You can then:
     * Increase the timeout for your Cloud Function in the [Google Cloud Platform Cloud Function Console](https://console.cloud.google.com/functions).
     * Run your function locally, using `firebase serve --only functions`. 
 
