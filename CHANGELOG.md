@@ -1,3 +1,9 @@
+## 1.3.0 (2019-03-12)
+
+* Takes QuerySnapshot as parameter instead of getting entire collection, so users can chose what data  ([7b4f893](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/7b4f893))
+
+
+
 ## 1.2.0 (2019-03-09)
 
 * Added strict Eslint policy. ([20ee970](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/20ee970))
