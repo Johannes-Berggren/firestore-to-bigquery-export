@@ -1,3 +1,9 @@
+## <small>1.3.1 (2019-03-17)</small>
+
+* Improved documentation. ([ad4dbd9](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/ad4dbd9))
+
+
+
 ## 1.3.0 (2019-03-12)
 
 * Takes QuerySnapshot as parameter instead of getting entire collection, so users can chose what data  ([7b4f893](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/7b4f893))
