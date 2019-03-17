@@ -1,3 +1,9 @@
+## <small>1.3.2 (2019-03-17)</small>
+
+* Updated dev-dependencies and corrected package-lock version stamp. ([ca767e4](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/ca767e4))
+
+
+
 ## <small>1.3.1 (2019-03-17)</small>
 
 * Improved documentation. ([ad4dbd9](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/ad4dbd9))
