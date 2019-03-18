@@ -161,13 +161,18 @@ function createTableWithSchema (datasetID, collectionName) {
       return field
     }
     else if (Array.isArray(val)) {
-      field.type = 'STRING'
-      field.mode = 'NULLABLE'
-      return field
+      for (let i = 0; i < val.length; i++) {
+        const schemaField = getSchemaField(val[i], i, field.name)
+        if (schemaField !== undefined && !index.includes(schemaField.name)) {
+          options.schema.fields.push(schemaField)
+          index.push(schemaField.name)
+        }
+      }
+      return undefined
     }
     else if (typeof val === 'object' && Object.keys(val).length) {
       Object.keys(val).forEach(subPropName => {
-        const schemaField = getSchemaField(val[subPropName], subPropName, propName)
+        const schemaField = getSchemaField(val[subPropName], subPropName, field.name)
         if (schemaField !== undefined && !index.includes(schemaField.name)) {
           options.schema.fields.push(schemaField)
           index.push(schemaField.name)
