@@ -220,6 +220,34 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
 
   return bigQuery.dataset(datasetID).table(collectionName).insert(rows)
     .then(() => counter)
+    .catch(e => {
+      let errorMessage = ''
+
+      if (e.errors.length) {
+        errorMessage = e.errors.length + ' errors.'
+        console.error(e.errors.length + ' errors. Here is the first one:')
+        console.error(e.errors[0])
+
+        if (e.errors[0].errors[0].message === 'no such field.') {
+          console.error('Looks like there is a data type mismatch. Here are the data types found in this row. Please compare them with your BigQuery table schema.')
+
+          const row     = {},
+                rowKeys = Object.keys(e.errors[0].row)
+
+          rowKeys.forEach(propName => {
+            const formattedProp = formatProp(e.errors[0].row[propName], propName)
+            if (formattedProp) row[formatName(propName)] = typeof formattedProp
+          })
+          console.error(row)
+        }
+      }
+      else {
+        errorMessage = e
+        console.error(e)
+      }
+
+      throw new Error(errorMessage)
+    })
 }
 
 /**
