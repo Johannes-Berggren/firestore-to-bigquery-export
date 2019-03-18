@@ -130,7 +130,7 @@ bigExport.deleteBigQueryTables('firestore', [
 
 Maybe you want to refresh / overwrite a single table?
 ```javascript
-// Overwrites the users BigQuery table with fresh data from Firestore
+// Overwrites the users BigQuery table with fresh data from the users collection in Firestore
 
 bigExport.deleteBigQueryTables('firestore', 'users')
     .then(() => {
@@ -139,8 +139,8 @@ bigExport.deleteBigQueryTables('firestore', 'users')
         firestore.collection('users').get()
       ])
     })
-    .then(collectionSnapshot => {
-      return bigExport.copyToBigQuery('firestore', 'users', collectionSnapshot)
+    .then(promises => {
+      return bigExport.copyToBigQuery('firestore', 'users', promises[1])
     })
     .then(res => {
       console.log('Copied ' + res + ' documents to BigQuery.')
