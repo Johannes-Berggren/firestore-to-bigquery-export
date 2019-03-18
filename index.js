@@ -188,17 +188,18 @@ function createTableWithSchema (datasetID, collectionName) {
  * @param {string} datasetID
  * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
- * @returns {Promise<Object>}
+ * @returns {Promise<Number>}
  * @public
  */
 exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
-  console.log('Copying ' + collectionName + ' to dataset ' + datasetID + '.')
+  console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
 
   let counter = 0
+  const rows = []
 
-  return Promise.all(snapshot.docs.map(doc => {
-    const docID = doc.id,
-          data  = doc.data()
+  for (let i = 0; i < snapshot.docs.length; i++) {
+    const docID = snapshot.docs[i].id,
+          data  = snapshot.docs[i].data()
 
     currentRow = {}
 
@@ -208,11 +209,12 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
       if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
     })
 
+    rows.push(currentRow)
     counter++
-    return bigQuery.dataset(datasetID).table(collectionName).insert(currentRow)
-  }))
+  }
+
+  return bigQuery.dataset(datasetID).table(collectionName).insert(rows)
     .then(() => counter)
-    .catch(e => e)
 }
 
 /**
@@ -268,7 +270,7 @@ function formatName (propName, parent) {
  */
 exports.deleteBigQueryTables = (datasetID, tableNames) => {
   return Promise.all(tableNames.map(n => {
-    console.log('Deleting table ' + n + '.')
+    console.log('Deleting table ' + n + ' from dataset ' + datasetID + '.')
     return bigQuery.dataset(datasetID).table(n).delete()
   }))
 }
