@@ -61,15 +61,9 @@ exports.createBigQueryTables = (datasetID, collectionNames) => {
     .then(res => {
       return res[0] || bigQuery.createDataset(datasetID)
     })
-    .then(() => bigQuery.dataset(datasetID).getTables())
-    .then(tables => {
-      const existingTables = tables[0].map(table => table.id)
-
+    .then(() => {
       return Promise.all(collectionNames.map(n => {
-        if (!existingTables.includes(n)) {
-          return createTableWithSchema(datasetID, n)
-        }
-        throw new Error('Table ' + n + ' already exists.')
+        return createTableWithSchema(datasetID, n)
       }))
     })
 }
