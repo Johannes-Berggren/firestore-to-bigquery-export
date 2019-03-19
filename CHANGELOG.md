@@ -1,3 +1,13 @@
+## <small>1.3.4 (2019-03-19)</small>
+
+* Improved error messages when multiple documents fail. ([f61c12d](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/f61c12d))
+* Returning BigQuery errors instead of making own. ([3e9bf97](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/3e9bf97))
+* Support for deep objects and arrays. ([418e42b](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/418e42b))
+* Support for objects inside arrays. ([fcb392d](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/fcb392d))
+* Updated README.md. ([9a5e53b](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/9a5e53b))
+
+
+
 ## <small>1.3.3 (2019-03-18)</small>
 
 * Improved performance for copyToBigQuery function. Inserting entire collection instead of single rows ([1348c42](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/1348c42))
