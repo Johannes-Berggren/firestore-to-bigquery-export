@@ -160,5 +160,4 @@ bigExport.deleteBigQueryTables('firestore', 'users')
 Please use the [issue tracker](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues).
 
 ## To-do
-* Implement continuous streaming of Firestore data to BigQuery.
 * Implement patching of tables.
