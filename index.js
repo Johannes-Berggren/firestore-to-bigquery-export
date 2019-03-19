@@ -180,12 +180,6 @@ function createTableWithSchema (datasetID, collectionName) {
       })
       return undefined
     }
-    else if (typeof val === 'object' && !Object.keys(val).length) {
-      field.type = 'STRING'
-      field.mode = 'NULLABLE'
-      return field
-    }
-    else console.error(collectionName + '.' + propName + ' error! Type: ' + typeof val)
   }
 }
 
@@ -211,7 +205,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
     Object.keys(data).forEach(propName => {
       currentRow['doc_ID'] = docID
       const formattedProp = formatProp(data[propName], propName)
-      if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
+      if (formattedProp) currentRow[formatName(propName)] = formattedProp
     })
 
     rows.push(currentRow)
@@ -236,7 +230,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
 
           rowKeys.forEach(propName => {
             const formattedProp = formatProp(e.errors[0].row[propName], propName)
-            if (formattedProp) row[formatName(propName)] = typeof formattedProp
+            if (formattedProp !== undefined) row[formatName(propName)] = typeof formattedProp
           })
           console.error(row)
         }
@@ -258,25 +252,24 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
  * @returns {string||number||Array||Object}
  * @private
  */
-function formatProp (val, propName) {
-  if (val === null) {
-    return val
-  }
+function formatProp (val, propName, parent) {
+  if (val === null || typeof val === 'number' || typeof val === 'string') return val
+
+  const name = formatName(propName, parent)
+
   if (Array.isArray(val)) {
-    let s = ''
     for (let i = 0; i < val.length; i++) {
-      s += val[i] + (i < val.length - 1 ? ',' : '')
+      const formattedProp = formatProp(val[i], i, name)
+      if (formattedProp !== undefined) currentRow[formatName(i, name)] = formattedProp
     }
-    return s
   }
   else if (typeof val === 'object' && Object.keys(val).length) {
     Object.keys(val).forEach(subPropName => {
-      const formattedProp = formatProp(val[subPropName], subPropName)
-      if (formattedProp !== undefined) currentRow[formatName(subPropName, propName)] = formattedProp
+      const formattedProp = formatProp(val[subPropName], subPropName, name)
+      if (formattedProp !== undefined) currentRow[formatName(subPropName, name)] = formattedProp
     })
     return undefined
   }
-  return val
 }
 
 /**
