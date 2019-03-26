@@ -107,7 +107,7 @@ Promise.all(collectionNames.map(n => {
       .then(c => bigExport.copyToBigQuery('firestore', n, c))
   }))
     .then(res => {
-      console.log('Copied ' + res + ' documents to BigQuery.')
+      console.log('Copied ' + res.reduce((a, b) => a + b) + ' documents to BigQuery.')
     })
     .catch(error => console.error(error))
 ```

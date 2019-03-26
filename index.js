@@ -178,6 +178,9 @@ function createTableWithSchema (datasetID, collectionName) {
 }
 
 /**
+ * Runs through the given QuerySnapshot and converts and copies it to an array.
+ * Inserts the array into a BigQuery table with the given collectionName.
+ *
  * @param {string} datasetID
  * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
