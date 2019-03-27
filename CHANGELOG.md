@@ -1,3 +1,11 @@
+## <small>1.3.6 (2019-03-27)</small>
+
+* Added flag for verbose console output to make debugging easier. ([bdad033](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/bdad033))
+* Setting column to float if any float is detected. Fixes #1 ([5a062e8](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/5a062e8)), closes [#1](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues/1)
+* Updated documentation. ([89b8346](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/89b8346))
+
+
+
 ## <small>1.3.4 (2019-03-19)</small>
 
 * Improved error messages when multiple documents fail. ([f61c12d](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/f61c12d))
