@@ -81,8 +81,8 @@ exports.createBigQueryTables = (datasetID, collectionNames, verbose = false) => 
  * @returns {Promise<BigQuery.Table>}
  * @private
  */
-  const index   = [],
 function createTableWithSchema (datasetID, collectionName, verbose = false) {
+  const index   = {},
         options = {
           schema: {
             fields: [
@@ -99,14 +99,26 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     .then(documents => {
       if (verbose) console.log('Creating schema and table ' + collectionName + '.')
 
-      documents.forEach(document => {
-        document = document.data()
+      documents.forEach(d => {
+        d = d.data()
 
-        Object.keys(document).forEach(propName => {
-          const schemaField = getSchemaField(document[propName], propName)
-          if (schemaField !== undefined && !index.includes(schemaField.name)) {
-            options.schema.fields.push(schemaField)
-            index.push(schemaField.name)
+        Object.keys(d).forEach(propName => {
+          const schemaField = getSchemaField(d[propName], propName)
+
+          if (schemaField !== undefined) {
+            if (!index.hasOwnProperty(schemaField.name)) {
+              options.schema.fields.push(schemaField)
+              schemaField.index = options.schema.fields.length - 1
+              index[schemaField.name] = schemaField
+            }
+            else {
+              const currentValue = index[schemaField.name]
+
+              if (schemaField.type === 'FLOAT' && currentValue.type === 'INTEGER') {
+                options.schema.fields[currentValue.index] = schemaField
+                index[schemaField.name].type = 'FLOAT'
+              }
+            }
           }
         })
       })
@@ -156,7 +168,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
       field.mode = 'NULLABLE'
       return field
     }
-    else if (typeof val === 'number') {
+    else if (typeof val === 'number' && !isNaN(val)) {
       Number.isInteger(val) ? field.type = 'INTEGER' : field.type = 'FLOAT'
       field.mode = 'NULLABLE'
       return field
@@ -169,9 +181,9 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     else if (Array.isArray(val)) {
       for (let i = 0; i < val.length; i++) {
         const schemaField = getSchemaField(val[i], i, field.name)
-        if (schemaField !== undefined && !index.includes(schemaField.name)) {
+        if (schemaField !== undefined && !index.hasOwnProperty(schemaField.name)) {
           options.schema.fields.push(schemaField)
-          index.push(schemaField.name)
+          index[schemaField.name] = schemaField
         }
       }
       return undefined
@@ -179,9 +191,9 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     else if (typeof val === 'object' && Object.keys(val).length) {
       Object.keys(val).forEach(subPropName => {
         const schemaField = getSchemaField(val[subPropName], subPropName, field.name)
-        if (schemaField !== undefined && !index.includes(schemaField.name)) {
+        if (schemaField !== undefined && !index.hasOwnProperty(schemaField.name)) {
           options.schema.fields.push(schemaField)
-          index.push(schemaField.name)
+          index[schemaField.name] = schemaField
         }
       })
       return undefined
