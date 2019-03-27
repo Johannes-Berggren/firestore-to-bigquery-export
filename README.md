@@ -54,11 +54,44 @@ bigExport.setFirebaseConfig(GCPSA)
 ## How to
 
 ### API
-* `bigExport.setBigQueryConfig(serviceAccountFile:JSON)`
-* `bigExport.setFirebaseConfig(serviceAccountFile:JSON)`
-* `bigExport.createBigQueryTables(datasetID:string, collectionNames:Array):Promise<Array>`
-* `bigExport.copyToBigQuery(datasetID:string, collectionName:string, snapshot:firebase.firestore.QuerySnapshot):Promise<number>`
-* `bigExport.deleteBigQueryTables(datasetID:string, tableNames:Array):Promise<Array>`
+```javascript
+bigExport.setBigQueryConfig(
+  serviceAccountFile // JSON
+)
+```
+
+```javascript
+bigExport.setFirebaseConfig(
+  serviceAccountFile // JSON
+)
+```
+
+
+```javascript
+bigExport.createBigQueryTables(
+  datasetID, // String
+  collectionNames, // Array
+  verbose // boolean
+)
+// returns Promise<Array>
+```
+
+```javascript
+bigExport.copyToBigQuery(
+  datasetID, // String
+  collectionName, // String
+  snapshot // firebase.firestore.QuerySnapshot
+)
+// returns Promise<number>
+```
+
+```javascript
+bigExport.deleteBigQueryTables(
+  datasetID, // String
+  tableNames // Array
+)
+// returns Promise<Array>
+```
 
 
 ### Examples
@@ -148,6 +181,11 @@ bigExport.deleteBigQueryTables('firestore', 'users')
     .catch(error => console.error(error))
 ```
 
+## Keep in mind
+* If there's even one prop value that's a FLOAT in your collection during schema generation, the column will be set to FLOAT.
+* If there are ONLY INTs, the column will be set to INTEGER.
+* All columns will be NULLABLE.
+
 ## Limitations
 * Your Firestore data model should be consistent. If a property of documents in the same collection have different data types, you'll get errors.
 * Patching existing BigQuery sets isn't supported (yet). To refresh your datasets, you can `deleteBigQueryTables()`, then `createBigQueryTables()` and then `copyCollectionsToBigQuery()`.
@@ -160,4 +198,5 @@ bigExport.deleteBigQueryTables('firestore', 'users')
 Please use the [issue tracker](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/issues).
 
 ## To-do
+* Improve the handling of arrays.
 * Implement patching of tables.
