@@ -53,17 +53,18 @@ exports.setBigQueryConfig = serviceAccountFile => {
  *
  * @param {string} datasetID
  * @param {Array} collectionNames
+ * @param {boolean} [verbose = false]
  * @returns {Promise<Number>}
  * @public
  */
-exports.createBigQueryTables = (datasetID, collectionNames) => {
+exports.createBigQueryTables = (datasetID, collectionNames, verbose = false) => {
   return bigQuery.dataset(datasetID).exists()
     .then(res => {
       return res[0] || bigQuery.createDataset(datasetID)
     })
     .then(() => {
       return Promise.all(collectionNames.map(n => {
-        return createTableWithSchema(datasetID, n)
+        return createTableWithSchema(datasetID, n, verbose)
       }))
     })
 }
@@ -76,11 +77,12 @@ exports.createBigQueryTables = (datasetID, collectionNames) => {
  *
  * @param {string} datasetID
  * @param {string} collectionName
+ * @param {boolean} [verbose = false]
  * @returns {Promise<BigQuery.Table>}
  * @private
  */
-function createTableWithSchema (datasetID, collectionName) {
   const index   = [],
+function createTableWithSchema (datasetID, collectionName, verbose = false) {
         options = {
           schema: {
             fields: [
@@ -95,7 +97,7 @@ function createTableWithSchema (datasetID, collectionName) {
 
   return firestore.collection(collectionName).get()
     .then(documents => {
-      console.log('Creating schema and table ' + collectionName + '.')
+      if (verbose) console.log('Creating schema and table ' + collectionName + '.')
 
       documents.forEach(document => {
         document = document.data()
@@ -109,9 +111,19 @@ function createTableWithSchema (datasetID, collectionName) {
         })
       })
 
+      if (verbose) {
+        console.log('Completed schema generation for table ' + collectionName + ':')
+        options.schema.fields.forEach(o => {
+          console.log(o)
+        })
+      }
+
       return bigQuery.dataset(datasetID).createTable(collectionName, options)
     })
-    .catch(e => e)
+    .catch(e => {
+      if (verbose) console.error(e)
+      throw new Error(e)
+    })
 
   /**
    * Determines schema field properties based on the given document property.
@@ -184,11 +196,12 @@ function createTableWithSchema (datasetID, collectionName) {
  * @param {string} datasetID
  * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
+ * @param {boolean} [verbose = false]
  * @returns {Promise<Number>}
  * @public
  */
-exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
-  console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
+exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) => {
+  if (verbose) console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
 
   let counter = 0
   const rows = []
@@ -209,15 +222,23 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
     counter++
   }
 
+  if (verbose) console.log('Completed conversion of collection ' + collectionName + '.')
+
   return bigQuery.dataset(datasetID).table(collectionName).insert(rows)
-    .then(() => counter)
+    .then(() => {
+      if (verbose) console.log('Successfully copied collection ' + collectionName + ' to BigQuery.')
+      return counter
+    })
     .catch(e => {
       let errorMessage = ''
 
       if (e.errors.length) {
         errorMessage = e.errors.length + ' errors.'
-        console.error(e.errors.length + ' errors. Here is the first one:')
+
+        console.error(e.errors.length + ' errors. Here are the first three:')
         console.error(e.errors[0])
+        console.error(e.errors[1])
+        console.error(e.errors[2])
 
         if (e.errors[0].errors[0].message === 'no such field.') {
           console.error('Looks like there is a data type mismatch. Here are the data types found in this row. Please compare them with your BigQuery table schema.')
@@ -246,6 +267,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot) => {
  *
  * @param {string||number||Array||Object} val
  * @param {string} propName
+ * @param {string} parent
  * @returns {string||number||Array||Object}
  * @private
  */
@@ -278,8 +300,7 @@ function formatProp (val, propName, parent) {
  * @returns {string}
  * @private
  */
-function formatName (propName, parent) {
-  parent = parent || undefined
+function formatName (propName, parent = undefined) {
   return parent ? parent + '__' + propName : propName
 }
 
@@ -288,12 +309,13 @@ function formatName (propName, parent) {
  *
  * @param {string} datasetID
  * @param {Array} tableNames
+ * @param {boolean} [verbose = false]
  * @returns {Promise<number>}
  * @public
  */
-exports.deleteBigQueryTables = (datasetID, tableNames) => {
+exports.deleteBigQueryTables = (datasetID, tableNames, verbose = false) => {
   return Promise.all(tableNames.map(n => {
-    console.log('Deleting table ' + n + ' from dataset ' + datasetID + '.')
+    if (verbose) console.log('Deleting table ' + n + ' from dataset ' + datasetID + '.')
     return bigQuery.dataset(datasetID).table(n).delete()
   }))
 }
