@@ -1,3 +1,15 @@
+## <small>1.3.8 (2019-05-28)</small>
+
+* Gitignore .idea directory. ([f134e8a](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/f134e8a))
+
+
+
+## <small>1.3.7 (2019-05-28)</small>
+
+* Support for boolean type. ([89b8346](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/3d79a09))
+
+
+
 ## <small>1.3.6 (2019-03-27)</small>
 
 * Added flag for verbose console output to make debugging easier. ([bdad033](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/bdad033))
