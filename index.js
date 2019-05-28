@@ -227,7 +227,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) 
     Object.keys(data).forEach(propName => {
       currentRow['doc_ID'] = docID
       const formattedProp = formatProp(data[propName], propName)
-      if (formattedProp) currentRow[formatName(propName)] = formattedProp
+      if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
     })
 
     rows.push(currentRow)
@@ -284,7 +284,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) 
  * @private
  */
 function formatProp (val, propName, parent) {
-  if (val === null || typeof val === 'number' || typeof val === 'string') return val
+  if (val === null || typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean') return val
 
   const name = formatName(propName, parent)
 
