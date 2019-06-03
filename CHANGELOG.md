@@ -1,3 +1,9 @@
+## 1.4.0 (2019-06-03)
+
+* Updated dependencies to resolve Axios security issue. ([e4873fd](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/e4873fd))
+
+
+
 ## <small>1.3.8 (2019-05-28)</small>
 
 * Gitignore .idea directory. ([f134e8a](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/f134e8a))
