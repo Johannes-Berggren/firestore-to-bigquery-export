@@ -1,3 +1,9 @@
+## <small>1.4.1 (2019-09-03)</small>
+
+* Added param insertSize to let users control the size of BigQuery inserts. Default is 5000 rows. ([be3d476](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/be3d476))
+
+
+
 ## 1.4.0 (2019-06-03)
 
 * Updated dependencies to resolve Axios security issue. ([e4873fd](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/e4873fd))
