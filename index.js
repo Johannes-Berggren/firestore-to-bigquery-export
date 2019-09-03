@@ -209,14 +209,20 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
  * @param {string} collectionName
  * @param {firebase.firestore.QuerySnapshot} snapshot
  * @param {boolean} [verbose = false]
+ * @param {Number} [insertSize = 5000]
  * @returns {Promise<Number>}
  * @public
  */
-exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) => {
-  if (verbose) console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
+exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, insertSize = 5000) => {
+  if (verbose) {
+    console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
+    console.log('Inserting ' + insertSize + ' documents at a time.')
+  }
 
-  let counter = 0
-  const rows = []
+  let counter = 0,
+      rows    = []
+
+  const promises = []
 
   for (let i = 0; i < snapshot.docs.length; i++) {
     const docID = snapshot.docs[i].id,
@@ -232,11 +238,15 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) 
 
     rows.push(currentRow)
     counter++
+
+    if (rows.length === insertSize || i === snapshot.docs.length - 1) {
+      console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
+      promises.push(bigQuery.dataset(datasetID).table(collectionName).insert(rows))
+      rows = []
+    }
   }
 
-  if (verbose) console.log('Completed conversion of collection ' + collectionName + '.')
-
-  return bigQuery.dataset(datasetID).table(collectionName).insert(rows)
+  return Promise.all(promises)
     .then(() => {
       if (verbose) console.log('Successfully copied collection ' + collectionName + ' to BigQuery.')
       return counter
@@ -247,10 +257,10 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false) 
       if (e.errors.length) {
         errorMessage = e.errors.length + ' errors.'
 
-        console.error(e.errors.length + ' errors. Here are the first three:')
-        console.error(e.errors[0])
-        console.error(e.errors[1])
-        console.error(e.errors[2])
+        console.error(e.errors.length + ' errors. Here are the first ones:')
+        for (let z = 0; z < 3; z++) {
+          console.error(e.errors[z])
+        }
 
         if (e.errors[0].errors[0].message === 'no such field.') {
           console.error('Looks like there is a data type mismatch. Here are the data types found in this row. Please compare them with your BigQuery table schema.')

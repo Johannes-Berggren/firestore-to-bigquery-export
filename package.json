@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/Johannes-Berggren/firestore-to-bigquery-export#readme",
   "dependencies": {
-    "@google-cloud/bigquery": "^4.1.0",
-    "firebase-admin": "^8.0.0"
+    "@google-cloud/bigquery": "^4.1.8",
+    "firebase-admin": "^8.4.0"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
