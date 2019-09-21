@@ -3,7 +3,7 @@ module.exports = {
     'es6': true,
     'node': true
   },
-  'extends': 'standard',
+  'extends': 'eslint:recommended',
   'globals': {
     'Atomics': 'readonly',
     'SharedArrayBuffer': 'readonly'
@@ -32,15 +32,12 @@ module.exports = {
         'const': 3
       }
     }],
-    // allow debugger during development
-    'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
     'brace-style': [2, 'stroustrup', { 'allowSingleLine': true }],
     'prefer-arrow-callback': ['error'],
     'promise/always-return': 'error',
     'promise/no-return-wrap': 'error',
     'promise/param-names': 'error',
     'promise/catch-or-return': 'error',
-    'promise/no-native': 'off',
     'promise/no-nesting': 'warn',
     'promise/no-promise-in-callback': 'warn',
     'promise/no-callback-in-promise': 'warn',

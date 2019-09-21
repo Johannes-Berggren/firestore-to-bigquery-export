@@ -13,11 +13,12 @@
  *
  * @private
  */
-let { BigQuery } = require('@google-cloud/bigquery'),
-    bigQuery     = {},
-    currentRow   = {},
-    firebase     = require('firebase-admin'),
-    firestore    = {}
+const { BigQuery } = require('@google-cloud/bigquery'),
+      firebase     = require('firebase-admin')
+
+let bigQuery   = {},
+    currentRow = {},
+    firestore  = {}
 
 /**
  * Connecting to the given Firebase project.
@@ -96,17 +97,17 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
         }
 
   return firestore.collection(collectionName).get()
-    .then(documents => {
+    .then(snapshot => {
       if (verbose) console.log('Creating schema and table ' + collectionName + '.')
 
-      documents.forEach(d => {
-        d = d.data()
+      snapshot.forEach(document => {
+        document = document.data()
 
-        Object.keys(d).forEach(propName => {
-          const schemaField = getSchemaField(d[propName], propName)
+        Object.keys(document).forEach(propName => {
+          const schemaField = getSchemaField(document[propName], propName)
 
           if (schemaField !== undefined) {
-            if (!index.hasOwnProperty(schemaField.name)) {
+            if (!Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
               options.schema.fields.push(schemaField)
               schemaField.index = options.schema.fields.length - 1
               index[schemaField.name] = schemaField
@@ -181,7 +182,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     else if (Array.isArray(val)) {
       for (let i = 0; i < val.length; i++) {
         const schemaField = getSchemaField(val[i], i, field.name)
-        if (schemaField !== undefined && !index.hasOwnProperty(schemaField.name)) {
+        if (schemaField !== undefined && !Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
           options.schema.fields.push(schemaField)
           index[schemaField.name] = schemaField
         }
@@ -191,7 +192,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     else if (typeof val === 'object' && Object.keys(val).length) {
       Object.keys(val).forEach(subPropName => {
         const schemaField = getSchemaField(val[subPropName], subPropName, field.name)
-        if (schemaField !== undefined && !index.hasOwnProperty(schemaField.name)) {
+        if (schemaField !== undefined && !Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
           options.schema.fields.push(schemaField)
           index[schemaField.name] = schemaField
         }
@@ -231,7 +232,7 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
     currentRow = {}
 
     Object.keys(data).forEach(propName => {
-      currentRow['doc_ID'] = docID
+      currentRow.doc_ID = docID
       const formattedProp = formatProp(data[propName], propName)
       if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
     })
