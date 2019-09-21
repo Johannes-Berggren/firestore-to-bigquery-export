@@ -1,3 +1,9 @@
+## <small>1.4.2 (2019-09-21)</small>
+
+* Fixed eslint errors. ([feca721](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/feca721))
+
+
+
 ## <small>1.4.1 (2019-09-03)</small>
 
 * Added param insertSize to let users control the size of BigQuery inserts. Default is 5000 rows. ([be3d476](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/be3d476))
