@@ -1,3 +1,9 @@
+## <small>1.5.1 (2020-01-22)</small>
+
+* Corrected README examples and updated description. ([698896e](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/698896e))
+
+
+
 ## 1.5.0 (2020-01-22)
 
 * Removed possibility of handling several collections / tables simultaneously, in order to reduce comp ([a7ebc4b](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/a7ebc4b))
