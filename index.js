@@ -46,34 +46,7 @@ exports.setBigQueryConfig = serviceAccountFile => {
 }
 
 /**
- * Creating a BigQuery dataset with the given name if it doesn't already exist.
- * Running through each collection and checking if a table with the same name exists
- * in the bigQuery.dataset(datasetID).
- *
- * Creating the tables with the correct schema if the table doesn't already exist.
- *
- * @param {string} datasetID
- * @param {Array} collectionNames
- * @param {boolean} [verbose = false]
- * @returns {Promise<Number>}
- * @public
- */
-exports.createBigQueryTables = (datasetID, collectionNames, verbose = false) => {
-  return bigQuery.dataset(datasetID).exists()
-    .then(res => {
-      return res[0] || bigQuery.createDataset(datasetID)
-    })
-    .then(() => {
-      return Promise.all(collectionNames.map(n => {
-        return createTableWithSchema(datasetID, n, verbose)
-      }))
-    })
-}
-
-/**
- * Runs through all documents in the given collection
- * to ensure all properties are added to the schema.
- *
+ * Runs through all documents in the given collection to ensure all properties are added to the schema.
  * Generating schema. Creating a table with the created schema in the given dataset.
  *
  * @param {string} datasetID
@@ -82,7 +55,7 @@ exports.createBigQueryTables = (datasetID, collectionNames, verbose = false) => 
  * @returns {Promise<BigQuery.Table>}
  * @private
  */
-function createTableWithSchema (datasetID, collectionName, verbose = false) {
+exports.createBigQueryTable = (datasetID, collectionName, verbose = false) => {
   const index   = {},
         options = {
           schema: {
@@ -104,7 +77,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
         document = document.data()
 
         Object.keys(document).forEach(propName => {
-          const schemaField = getSchemaField(document[propName], propName)
+          const schemaField = _getSchemaField(document[propName], propName)
 
           if (schemaField !== undefined) {
             if (!Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
@@ -134,7 +107,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
       return bigQuery.dataset(datasetID).createTable(collectionName, options)
     })
     .catch(e => {
-      if (verbose) console.error(e)
+      console.error(e)
       throw new Error(e)
     })
 
@@ -147,7 +120,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
    * @returns {Object||undefined}
    * @private
    */
-  function getSchemaField (val, propName, parent) {
+  function _getSchemaField (val, propName, parent) {
     const field = {
       name: parent ? parent + '__' + propName : propName,
       mode: '',
@@ -181,7 +154,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     }
     else if (Array.isArray(val)) {
       for (let i = 0; i < val.length; i++) {
-        const schemaField = getSchemaField(val[i], i, field.name)
+        const schemaField = _getSchemaField(val[i], i, field.name)
         if (schemaField !== undefined && !Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
           options.schema.fields.push(schemaField)
           index[schemaField.name] = schemaField
@@ -191,7 +164,7 @@ function createTableWithSchema (datasetID, collectionName, verbose = false) {
     }
     else if (typeof val === 'object' && Object.keys(val).length) {
       Object.keys(val).forEach(subPropName => {
-        const schemaField = getSchemaField(val[subPropName], subPropName, field.name)
+        const schemaField = _getSchemaField(val[subPropName], subPropName, field.name)
         if (schemaField !== undefined && !Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
           options.schema.fields.push(schemaField)
           index[schemaField.name] = schemaField
@@ -233,16 +206,19 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
 
     Object.keys(data).forEach(propName => {
       currentRow.doc_ID = docID
-      const formattedProp = formatProp(data[propName], propName)
-      if (formattedProp !== undefined) currentRow[formatName(propName)] = formattedProp
+      const formattedProp = _formatProp(data[propName], propName)
+      if (formattedProp !== undefined) currentRow[_formatName(propName)] = formattedProp
     })
 
     rows.push(currentRow)
     counter++
 
     if (rows.length === insertSize || i === snapshot.docs.length - 1) {
-      console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
-      promises.push(bigQuery.dataset(datasetID).table(collectionName).insert(rows))
+      if (verbose) console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
+      promises.push(
+        bigQuery.dataset(datasetID).table(collectionName).insert(rows)
+          .catch(e => console.error(e))
+      )
       rows = []
     }
   }
@@ -253,12 +229,9 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
       return counter
     })
     .catch(e => {
-      let errorMessage = ''
-
       if (e.errors.length) {
-        errorMessage = e.errors.length + ' errors.'
+        console.error(e.errors.length + ' errors. Here are the first three:')
 
-        console.error(e.errors.length + ' errors. Here are the first ones:')
         for (let z = 0; z < 3; z++) {
           console.error(e.errors[z])
         }
@@ -270,18 +243,13 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
                 rowKeys = Object.keys(e.errors[0].row)
 
           rowKeys.forEach(propName => {
-            const formattedProp = formatProp(e.errors[0].row[propName], propName)
-            if (formattedProp !== undefined) row[formatName(propName)] = typeof formattedProp
+            const formattedProp = _formatProp(e.errors[0].row[propName], propName)
+            if (formattedProp !== undefined) row[_formatName(propName)] = typeof formattedProp
           })
           console.error(row)
         }
       }
-      else {
-        errorMessage = e
-        console.error(e)
-      }
-
-      throw new Error(errorMessage)
+      else console.error(e)
     })
 }
 
@@ -294,21 +262,21 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
  * @returns {string||number||Array||Object}
  * @private
  */
-function formatProp (val, propName, parent) {
+function _formatProp (val, propName, parent) {
   if (val === null || typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean') return val
 
-  const name = formatName(propName, parent)
+  const name = _formatName(propName, parent)
 
   if (Array.isArray(val)) {
     for (let i = 0; i < val.length; i++) {
-      const formattedProp = formatProp(val[i], i, name)
-      if (formattedProp !== undefined) currentRow[formatName(i, name)] = formattedProp
+      const formattedProp = _formatProp(val[i], i, name)
+      if (formattedProp !== undefined) currentRow[_formatName(i, name)] = formattedProp
     }
   }
   else if (typeof val === 'object' && Object.keys(val).length) {
     Object.keys(val).forEach(subPropName => {
-      const formattedProp = formatProp(val[subPropName], subPropName, name)
-      if (formattedProp !== undefined) currentRow[formatName(subPropName, name)] = formattedProp
+      const formattedProp = _formatProp(val[subPropName], subPropName, name)
+      if (formattedProp !== undefined) currentRow[_formatName(subPropName, name)] = formattedProp
     })
     return undefined
   }
@@ -323,7 +291,7 @@ function formatProp (val, propName, parent) {
  * @returns {string}
  * @private
  */
-function formatName (propName, parent = undefined) {
+function _formatName (propName, parent = undefined) {
   return parent ? parent + '__' + propName : propName
 }
 
@@ -331,14 +299,17 @@ function formatName (propName, parent = undefined) {
  * Deletes all the given tables.
  *
  * @param {string} datasetID
- * @param {Array} tableNames
+ * @param {String} tableName
  * @param {boolean} [verbose = false]
  * @returns {Promise<number>}
  * @public
  */
-exports.deleteBigQueryTables = (datasetID, tableNames, verbose = false) => {
-  return Promise.all(tableNames.map(n => {
-    if (verbose) console.log('Deleting table ' + n + ' from dataset ' + datasetID + '.')
-    return bigQuery.dataset(datasetID).table(n).delete()
-  }))
+exports.deleteBigQueryTable = (datasetID, tableName, verbose = false) => {
+  if (verbose) console.log('Deleting table ' + tableName + ' from dataset ' + datasetID + '.')
+
+  return bigQuery.dataset(datasetID).table(tableName).delete()
+    .catch(e => {
+      console.error(e.message)
+      throw new Error(e.message)
+    })
 }
