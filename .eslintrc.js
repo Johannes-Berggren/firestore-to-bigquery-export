@@ -19,6 +19,7 @@ module.exports = {
     'one-var': ['error', 'always'],
     'dot-location': ['error', 'property'],
     'eqeqeq': ['error', 'always'],
+    'no-console': 0,
     'no-multi-spaces': [2, {
       exceptions: {
         'VariableDeclarator': true,
