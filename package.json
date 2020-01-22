@@ -1,7 +1,7 @@
 {
   "name": "firestore-to-bigquery-export",
-  "version": "1.4.2",
-  "description": "An automatic tool for copying and converting Firestore data to BigQuery.",
+  "version": "1.5.0",
+  "description": "Node-package for copying and converting Firestore data to BigQuery.",
   "main": "index.js",
   "scripts": {
     "lint": "eslint --ext .js .",
@@ -14,7 +14,9 @@
   "keywords": [
     "Firestore",
     "BigQuery",
-    "Export"
+    "Export",
+    "Database",
+    "GCP"
   ],
   "author": "Johannes Berggren <johannes@berggren.co> (https://johannesberggren.com)",
   "license": "MIT",

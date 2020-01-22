@@ -1,3 +1,11 @@
+## 1.5.0 (2020-01-22)
+
+* Removed possibility of handling several collections / tables simultaneously, in order to reduce comp ([a7ebc4b](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/a7ebc4b))
+* Updated dependencies. ([9a391b6](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/9a391b6))
+* Updated README. ([7c992dc](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/7c992dc))
+
+
+
 ## <small>1.4.2 (2019-09-21)</small>
 
 * Fixed eslint errors. ([feca721](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/feca721))
