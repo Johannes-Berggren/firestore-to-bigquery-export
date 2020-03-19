@@ -52,60 +52,63 @@ exports.setBigQueryConfig = serviceAccountFile => {
  * @param {string} datasetID
  * @param {string} collectionName
  * @param {boolean} [verbose = false]
+ * @param {Array<string>} exclude
  * @returns {Promise<BigQuery.Table>}
  * @private
  */
-exports.createBigQueryTable = (datasetID, collectionName, verbose = false) => {
-  const index   = {},
-        options = {
-          schema: {
-            fields: [
-              {
-                name: 'doc_ID',
-                type: 'STRING',
-                mode: 'REQUIRED'
-              }
-            ]
+exports.createBigQueryTable = async (datasetID, collectionName, verbose = false, exclude = []) => {
+  const index = {}
+
+  const options = {
+    schema: {
+      fields: [
+        {
+          name: 'doc_ID',
+          type: 'STRING',
+          mode: 'REQUIRED'
+        }
+      ]
+    }
+  }
+
+  const snapshot = await firestore.collection(collectionName).get()
+
+  if (verbose) console.log('Creating schema and table ' + collectionName + '.')
+
+  snapshot.forEach(document => {
+    document = document.data()
+
+    Object.keys(document).forEach(propName => {
+      if (!exclude.includes(propName)) {
+        const schemaField = _getSchemaField(document[propName], propName)
+
+        if (schemaField !== undefined) {
+          if (!Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
+            options.schema.fields.push(schemaField)
+            schemaField.index = options.schema.fields.length - 1
+            index[schemaField.name] = schemaField
+          }
+          else {
+            const currentValue = index[schemaField.name]
+
+            if (schemaField.type === 'FLOAT' && currentValue.type === 'INTEGER') {
+              options.schema.fields[currentValue.index] = schemaField
+              index[schemaField.name].type = 'FLOAT'
+            }
           }
         }
-
-  return firestore.collection(collectionName).get()
-    .then(snapshot => {
-      if (verbose) console.log('Creating schema and table ' + collectionName + '.')
-
-      snapshot.forEach(document => {
-        document = document.data()
-
-        Object.keys(document).forEach(propName => {
-          const schemaField = _getSchemaField(document[propName], propName)
-
-          if (schemaField !== undefined) {
-            if (!Object.prototype.hasOwnProperty.call(index, schemaField.name)) {
-              options.schema.fields.push(schemaField)
-              schemaField.index = options.schema.fields.length - 1
-              index[schemaField.name] = schemaField
-            }
-            else {
-              const currentValue = index[schemaField.name]
-
-              if (schemaField.type === 'FLOAT' && currentValue.type === 'INTEGER') {
-                options.schema.fields[currentValue.index] = schemaField
-                index[schemaField.name].type = 'FLOAT'
-              }
-            }
-          }
-        })
-      })
-
-      if (verbose) {
-        console.log('Completed schema generation for table ' + collectionName + ':')
-        options.schema.fields.forEach(o => {
-          console.log(o)
-        })
       }
-
-      return bigQuery.dataset(datasetID).createTable(collectionName, options)
     })
+  })
+
+  if (verbose) {
+    console.log('Completed schema generation for table ' + collectionName + ':')
+    options.schema.fields.forEach(o => {
+      console.log(o)
+    })
+  }
+
+  return bigQuery.dataset(datasetID).createTable(collectionName, options)
     .catch(e => {
       console.error(e)
       throw new Error(e)
@@ -184,30 +187,33 @@ exports.createBigQueryTable = (datasetID, collectionName, verbose = false) => {
  * @param {firebase.firestore.QuerySnapshot} snapshot
  * @param {boolean} [verbose = false]
  * @param {Number} [insertSize = 5000]
+ * @param {Array<string>} exclude
  * @returns {Promise<Number>}
  * @public
  */
-exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, insertSize = 5000) => {
+exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, insertSize = 5000, exclude = []) => {
   if (verbose) {
     console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
     console.log('Inserting ' + insertSize + ' documents at a time.')
   }
 
-  let counter = 0,
-      rows    = []
+  let counter = 0
+  let rows = []
 
   const promises = []
 
   for (let i = 0; i < snapshot.docs.length; i++) {
-    const docID = snapshot.docs[i].id,
-          data  = snapshot.docs[i].data()
+    const docID = snapshot.docs[i].id
+    const data = snapshot.docs[i].data()
 
     currentRow = {}
 
     Object.keys(data).forEach(propName => {
-      currentRow.doc_ID = docID
-      const formattedProp = _formatProp(data[propName], propName)
-      if (formattedProp !== undefined) currentRow[_formatName(propName)] = formattedProp
+      if (!exclude.includes(propName)) {
+        currentRow.doc_ID = docID
+        const formattedProp = _formatProp(data[propName], propName)
+        if (formattedProp !== undefined) currentRow[_formatName(propName)] = formattedProp
+      }
     })
 
     rows.push(currentRow)

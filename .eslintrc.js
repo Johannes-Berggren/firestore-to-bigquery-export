@@ -16,7 +16,6 @@ module.exports = {
   'rules': {
     'arrow-parens': ['error', 'as-needed'],
     'space-before-function-paren': ['error', 'always'],
-    'one-var': ['error', 'always'],
     'dot-location': ['error', 'property'],
     'eqeqeq': ['error', 'always'],
     'no-console': 0,
