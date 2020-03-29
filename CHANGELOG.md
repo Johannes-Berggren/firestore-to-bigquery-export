@@ -1,3 +1,10 @@
+## 1.7.0 (2020-03-29)
+
+* No longer catching errors. Letting them flow through to the users code. ([fec2891](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/fec2891))
+* Updated dependencies. ([6c426d8](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/6c426d8))
+
+
+
 ## 1.6.0 (2020-03-19)
 
 * Now possible to exclude specific fields from table creation and data export. ([783af43](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/783af43))
