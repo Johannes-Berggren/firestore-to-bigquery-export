@@ -109,10 +109,6 @@ exports.createBigQueryTable = async (datasetID, collectionName, verbose = false,
   }
 
   return bigQuery.dataset(datasetID).createTable(collectionName, options)
-    .catch(e => {
-      console.error(e)
-      throw new Error(e)
-    })
 
   /**
    * Determines schema field properties based on the given document property.
@@ -223,7 +219,6 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
       if (verbose) console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
       promises.push(
         bigQuery.dataset(datasetID).table(collectionName).insert(rows)
-          .catch(e => console.error(e))
       )
       rows = []
     }
@@ -314,8 +309,4 @@ exports.deleteBigQueryTable = (datasetID, tableName, verbose = false) => {
   if (verbose) console.log('Deleting table ' + tableName + ' from dataset ' + datasetID + '.')
 
   return bigQuery.dataset(datasetID).table(tableName).delete()
-    .catch(e => {
-      console.error(e.message)
-      throw new Error(e.message)
-    })
 }
