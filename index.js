@@ -1,7 +1,7 @@
 /*!
  * firestore-to-bigquery-export
  *
- * Copyright © 2019 Johannes Berggren <johannes@berggren.co>
+ * Copyright © 2019-2020 Johannes Berggren <johannes@berggren.co>
  * MIT Licensed
  *
  */
@@ -187,7 +187,7 @@ exports.createBigQueryTable = async (datasetID, collectionName, verbose = false,
  * @returns {Promise<Number>}
  * @public
  */
-exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, insertSize = 5000, exclude = []) => {
+exports.copyToBigQuery = async (datasetID, collectionName, snapshot, verbose = false, insertSize = 5000, exclude = []) => {
   if (verbose) {
     console.log('Copying ' + snapshot.docs.length + ' documents from collection ' + collectionName + ' to dataset ' + datasetID + '.')
     console.log('Inserting ' + insertSize + ' documents at a time.')
@@ -196,62 +196,47 @@ exports.copyToBigQuery = (datasetID, collectionName, snapshot, verbose = false, 
   let counter = 0
   let rows = []
 
-  const promises = []
+  try {
+    for (let i = 0; i < snapshot.docs.length; i++) {
+      const data = snapshot.docs[i].data()
 
-  for (let i = 0; i < snapshot.docs.length; i++) {
-    const docID = snapshot.docs[i].id
-    const data = snapshot.docs[i].data()
-
-    currentRow = {}
-
-    Object.keys(data).forEach(propName => {
-      if (!exclude.includes(propName)) {
-        currentRow.doc_ID = docID
-        const formattedProp = _formatProp(data[propName], propName)
-        if (formattedProp !== undefined) currentRow[_formatName(propName)] = formattedProp
+      currentRow = {
+        doc_ID: snapshot.docs[i].id
       }
-    })
 
-    rows.push(currentRow)
-    counter++
+      Object.keys(data).forEach(propName => {
+        if (!exclude.includes(propName)) {
+          const formattedProp = _formatProp(data[propName], propName)
+          if (formattedProp !== undefined) currentRow[_formatName(propName)] = formattedProp
+        }
+      })
 
-    if (rows.length === insertSize || i === snapshot.docs.length - 1) {
-      if (verbose) console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
-      promises.push(
-        bigQuery.dataset(datasetID).table(collectionName).insert(rows)
-      )
-      rows = []
+      rows.push(currentRow)
+      counter++
+
+      if (rows.length === insertSize || i === snapshot.docs.length - 1) {
+        if (verbose) console.log('Inserting ' + rows.length + ' docs. ' + (snapshot.docs.length - i - 1) + ' docs left.')
+
+        await bigQuery.dataset(datasetID).table(collectionName).insert(rows)
+
+        rows = []
+      }
+    }
+
+    if (verbose) console.log('Successfully copied collection ' + collectionName + ' to BigQuery.')
+    return counter
+  }
+  catch (e) {
+    console.error(e)
+
+    if (e.errors.length) {
+      console.error(e.errors.length + ' errors.')
+
+      for (let z = 0; z < e.errors.length; z++) {
+        console.error(e.errors[z])
+      }
     }
   }
-
-  return Promise.all(promises)
-    .then(() => {
-      if (verbose) console.log('Successfully copied collection ' + collectionName + ' to BigQuery.')
-      return counter
-    })
-    .catch(e => {
-      if (e.errors.length) {
-        console.error(e.errors.length + ' errors. Here are the first three:')
-
-        for (let z = 0; z < 3; z++) {
-          console.error(e.errors[z])
-        }
-
-        if (e.errors[0].errors[0].message === 'no such field.') {
-          console.error('Looks like there is a data type mismatch. Here are the data types found in this row. Please compare them with your BigQuery table schema.')
-
-          const row     = {},
-                rowKeys = Object.keys(e.errors[0].row)
-
-          rowKeys.forEach(propName => {
-            const formattedProp = _formatProp(e.errors[0].row[propName], propName)
-            if (formattedProp !== undefined) row[_formatName(propName)] = typeof formattedProp
-          })
-          console.error(row)
-        }
-      }
-      else console.error(e)
-    })
 }
 
 /**
