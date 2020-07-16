@@ -1,3 +1,10 @@
+## <small>1.7.2 (2020-07-16)</small>
+
+* Updated dependencies. ([8cbf2d9](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/8cbf2d9))
+* Updated README. ([79eaf58](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/79eaf58))
+
+
+
 ## <small>1.7.1 (2020-07-16)</small>
 
 * Bump websocket-extensions from 0.1.3 to 0.1.4 ([05e5de7](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/05e5de7))
