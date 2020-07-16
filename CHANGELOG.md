@@ -1,3 +1,10 @@
+## <small>1.7.1 (2020-07-16)</small>
+
+* Bump websocket-extensions from 0.1.3 to 0.1.4 ([05e5de7](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/05e5de7))
+* Fixed bug that filtered out certain Firestore objects that shouldn't be filtered out. ([9c490be](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/9c490be))
+
+
+
 ## 1.7.0 (2020-03-29)
 
 * No longer catching errors. Letting them flow through to the users code. ([fec2891](https://github.com/Johannes-Berggren/firestore-to-bigquery-export/commit/fec2891))
